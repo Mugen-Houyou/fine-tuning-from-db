@@ -225,7 +225,7 @@ class EOTPredictor:
 
         # 기본 설정값
         self._top_k = 10
-        self._temperature = 1.3
+        self._temperature = 0.5
 
         while True:
             try:
@@ -377,7 +377,7 @@ Temperature는 예측의 무작위성을 조절합니다.
               type=click.Choice(['polyglot', 'kogpt2', 'kanana-nano-2.1b-base'], case_sensitive=False),
               help='사용할 모델')
 @click.option('--top-k', '-k', default=10, type=int, help='예측할 토큰 개수')
-@click.option('--temperature', '--temp', default=1.3, type=float, help='샘플링 온도')
+@click.option('--temperature', '--temp', default=0.5, type=float, help='샘플링 온도')
 def main(text, model, top_k, temperature):
     """채팅 EOT (End-of-Turn) 판독기"""
 
