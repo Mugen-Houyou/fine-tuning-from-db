@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 채팅 EOT (End-of-Turn) 판독기
-한국어 채팅 문맥에서 대화가 끝났을 확률을 예측합니다.
+한국어 채팅 문맥에서 발화가 끝났을 확률을 예측합니다.
 """
 
 import re
@@ -197,11 +197,11 @@ class EOTPredictor:
         console.print(f"[bold]EOT 확률:[/bold] [{color}]{eot_prob*100:.1f}%[/{color}]  {bar}")
 
         if eot_prob > 0.7:
-            console.print("[red]→ 대화가 끝날 가능성이 높습니다[/red]")
+            console.print("[red]→ 발화가 끝날 가능성이 높습니다[/red]")
         elif eot_prob > 0.3:
-            console.print("[yellow]→ 대화가 끝날 수도 있습니다[/yellow]")
+            console.print("[yellow]→ 발화가 끝날 수도 있습니다[/yellow]")
         else:
-            console.print("[green]→ 대화가 계속될 가능성이 높습니다[/green]")
+            console.print("[green]→ 발화가 계속될 가능성이 높습니다[/green]")
 
         # 상세 예측 결과 표시
         console.print("\n[bold]예측 토큰 상세:[/bold]")
@@ -249,7 +249,7 @@ class EOTPredictor:
     def interactive_mode(self):
         """대화형 모드"""
         console.print("[bold cyan]채팅 EOT 판독기[/bold cyan]")
-        console.print("텍스트를 입력하면 대화 종료 확률을 예측합니다.")
+        console.print("텍스트를 입력하면 발화 종료 확률을 예측합니다.")
         console.print("종료하려면 'quit', 'exit', 또는 'q'를 입력하세요.")
         console.print("명령어를 보려면 '/help'를 입력하세요.\n")
 
@@ -337,8 +337,8 @@ class EOTPredictor:
 quit, exit, q          - 프로그램 종료
 
 [bold]📊 EOT 예측 정보:[/bold]
-다음 토큰 예측 결과를 분석하여 대화 종료(EOT) 확률을 계산합니다.
-EOT 확률이 높으면 대화가 끝날 가능성이 높습니다.
+다음 토큰 예측 결과를 분석하여 발화 종료 (End-Of-Turn; EOT) 확률을 계산합니다.
+EOT 확률이 높으면 발화가 끝날 가능성이 높습니다.
 
 [bold]🌡️  Temperature 설정:[/bold]
 Temperature는 예측의 무작위성을 조절합니다.
@@ -417,6 +417,7 @@ def main(text, model, top_k, temperature):
 
     if text:
         # 단일 예측 모드
+        # 한번 실행할 때마다 모델 load/unload하므로 비효율적일 수 있음
         eot_prob, details = predictor.predict_eot(text, top_k, temperature)
         predictor.display_results(text, eot_prob, details)
     else:
