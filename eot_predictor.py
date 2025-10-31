@@ -62,10 +62,16 @@ class EOTPredictor:
         # EOT 토큰 목록 로드
         self.eot_tokens = self._load_eot_tokens()
 
+        # 사용자 정의 EOT 토큰 로드
+        self.user_eot_tokens = self._load_user_eot_tokens()
+
         # 문장부호 및 특수문자
         self.punctuation = set([
             '.', ',', '!', '?', ';', ':', '~', '…', '。', '、', '！', '？', '；', '：',
-            '"', "'", '"', '"', ''', ''', '「', '」', '『', '』', '（', '）', '(', ')',
+            '"', "'",  # ASCII 따옴표
+            '\u201c', '\u201d', '\u2018', '\u2019',  # 유니코드 따옴표 (LEFT/RIGHT DOUBLE/SINGLE)
+            '"', '"', ''', ''',  # 유니코드 따옴표 (예비)
+            '「', '」', '『', '』', '（', '）', '(', ')',
             '[', ']', '{', '}', '《', '》', '〈', '〉', '【', '】'
         ])
 
@@ -97,10 +103,32 @@ class EOTPredictor:
         logger.info(f"EOT 토큰 {len(eot_tokens)}개 로드됨")
         return eot_tokens
 
+    def _load_user_eot_tokens(self) -> Set[str]:
+        """사용자 정의 EOT 토큰 로드"""
+        user_eot_tokens = set()
+        user_file = project_root / "user-defined-eots.txt"
+
+        if not user_file.exists():
+            logger.info("사용자 정의 EOT 파일 없음")
+            return user_eot_tokens
+
+        with open(user_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):  # 빈 줄과 주석 제외
+                    user_eot_tokens.add(line)
+
+        logger.info(f"사용자 정의 EOT 토큰 {len(user_eot_tokens)}개 로드됨")
+        return user_eot_tokens
+
     def is_eot_token(self, token: str) -> bool:
         """토큰이 EOT 토큰인지 확인"""
         # EOT 토큰 목록에 있는지 확인
         if token in self.eot_tokens:
+            return True
+
+        # 사용자 정의 EOT 토큰 확인
+        if token in self.user_eot_tokens:
             return True
 
         # 문장부호인지 확인
@@ -191,6 +219,8 @@ class EOTPredictor:
             if is_eot:
                 if token in self.eot_tokens:
                     token_type = "종료표현"
+                elif token in self.user_eot_tokens:
+                    token_type = "사용자정의"
                 elif any(p in token for p in self.punctuation):
                     token_type = "문장부호"
                 elif any(re.match(p, token) for p in self.special_token_patterns):
@@ -333,6 +363,7 @@ Temperature는 예측의 무작위성을 조절합니다.
         table.add_row("Top-K", str(self._top_k))
         table.add_row("Temperature", str(self._temperature))
         table.add_row("EOT 토큰 개수", str(len(self.eot_tokens)))
+        table.add_row("사용자 정의 EOT 토큰", str(len(self.user_eot_tokens)))
 
         console.print(table)
 
