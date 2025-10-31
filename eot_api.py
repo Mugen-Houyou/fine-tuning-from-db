@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 API_VERSION = "1.0.0"
 DEFAULT_PORT = 8177
 DEFAULT_HOST = "0.0.0.0"
+DEFAULT_RUN_MODE = "auto"
 
 # Rate limiting 설정
 RATE_LIMIT_PER_MINUTE = 100
@@ -62,6 +63,7 @@ class EOTPredictRequest(BaseModel):
     """EOT 예측 요청 모델"""
     text: str = Field(..., min_length=1, max_length=1000, description="입력 텍스트")
     model: str = Field(default="polyglot", description="사용할 모델")
+    run_mode: Optional[str] = Field(default=None, description="실행 모드 (auto, cpu, nvidia-gpu, amd-gpu)")
     top_k: int = Field(default=10, ge=1, le=20, description="예측할 토큰 개수")
     temperature: float = Field(default=0.5, ge=0.1, le=2.0, description="샘플링 온도")
     timeout: int = Field(default=60, ge=0, le=300, description="타임아웃 (초)")
@@ -72,11 +74,18 @@ class EOTPredictRequest(BaseModel):
             raise ValueError("텍스트는 공백만으로 이루어질 수 없습니다")
         return v
 
+    @validator('run_mode')
+    def validate_run_mode(cls, v):
+        if v is not None and v not in ['auto', 'cpu', 'nvidia-gpu', 'amd-gpu']:
+            raise ValueError("run_mode는 auto, cpu, nvidia-gpu, amd-gpu 중 하나여야 합니다")
+        return v
+
 
 class BatchEOTPredictRequest(BaseModel):
     """배치 EOT 예측 요청 모델"""
     texts: List[str] = Field(..., min_items=1, max_items=100, description="입력 텍스트 리스트")
     model: str = Field(default="polyglot", description="사용할 모델")
+    run_mode: Optional[str] = Field(default=None, description="실행 모드 (auto, cpu, nvidia-gpu, amd-gpu)")
     top_k: int = Field(default=10, ge=1, le=20, description="예측할 토큰 개수")
     temperature: float = Field(default=0.5, ge=0.1, le=2.0, description="샘플링 온도")
     timeout: int = Field(default=120, ge=0, le=600, description="타임아웃 (초)")
@@ -93,6 +102,7 @@ class ContextEOTPredictRequest(BaseModel):
     """컨텍스트 기반 EOT 예측 요청 모델"""
     context: List[str] = Field(..., min_items=1, max_items=20, description="대화 컨텍스트")
     model: str = Field(default="polyglot", description="사용할 모델")
+    run_mode: Optional[str] = Field(default=None, description="실행 모드 (auto, cpu, nvidia-gpu, amd-gpu)")
     top_k: int = Field(default=10, ge=1, le=20, description="예측할 토큰 개수")
     temperature: float = Field(default=0.5, ge=0.1, le=2.0, description="샘플링 온도")
     timeout: int = Field(default=60, ge=0, le=300, description="타임아웃 (초)")
@@ -122,11 +132,16 @@ async def lifespan(app: FastAPI):
     """앱 생명주기 관리"""
     # 시작 시
     global predictor
-    logger.info(f"EOT API 서버 시작 중... (포트: {DEFAULT_PORT})")
+
+    # 환경 변수에서 설정 읽기
+    run_mode = os.getenv("EOT_API_RUN_MODE", DEFAULT_RUN_MODE)
+    model_name = os.getenv("EOT_API_MODEL", "polyglot")
+
+    logger.info(f"EOT API 서버 시작 중... (포트: {DEFAULT_PORT}, 모델: {model_name}, 실행 모드: {run_mode})")
 
     try:
         # EOT 예측기 초기화
-        predictor = EOTPredictor(model_name="polyglot")
+        predictor = EOTPredictor(model_name=model_name, run_mode=run_mode)
         logger.info("EOT 예측기 초기화 완료")
 
         # 워밍업 (첫 예측은 느릴 수 있음)

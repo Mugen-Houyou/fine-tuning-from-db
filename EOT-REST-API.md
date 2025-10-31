@@ -51,6 +51,7 @@ Authorization: Bearer YOUR_API_KEY
 {
   "text": "그래 알았어",
   "model": "polyglot",
+  "run_mode": "cpu",
   "top_k": 10,
   "temperature": 0.5,
   "timeout": 60
@@ -61,10 +62,13 @@ Authorization: Bearer YOUR_API_KEY
 | 필드 | 타입 | 필수 | 기본값 | 설명 |
 |------|------|------|--------|------|
 | text | string | ✅ | - | 입력 텍스트 (1-1000자) |
-| model | string | ❌ | polyglot | 사용할 모델 |
+| model | string | ❌ | polyglot | 사용할 모델 (polyglot, kogpt2, kanana-nano-2.1b-base) |
+| run_mode | string | ❌ | null | 실행 모드 (auto, cpu, nvidia-gpu, amd-gpu) |
 | top_k | integer | ❌ | 10 | 예측할 토큰 개수 (1-20) |
 | temperature | float | ❌ | 0.5 | 샘플링 온도 (0.1-2.0) |
-| timeout | integer | ❌ | 60 | 타임아웃 (0-300초) |
+| timeout | integer | ❌ | 60 | 타임아웃 (0-300초, 0=무제한) |
+
+**참고:** `run_mode`는 서버 시작 시 환경 변수로 설정된 값과 일치해야 합니다. 다른 값을 지정하면 에러가 발생할 수 있습니다. 지정하지 않으면 서버의 기본 설정을 사용합니다.
 
 **Response (200 OK):**
 ```json
@@ -137,6 +141,7 @@ Authorization: Bearer YOUR_API_KEY
     "오늘 뭐 먹었어"
   ],
   "model": "polyglot",
+  "run_mode": "cpu",
   "top_k": 10,
   "temperature": 0.5,
   "timeout": 120
@@ -147,10 +152,11 @@ Authorization: Bearer YOUR_API_KEY
 | 필드 | 타입 | 필수 | 기본값 | 설명 |
 |------|------|------|--------|------|
 | texts | array | ✅ | - | 입력 텍스트 리스트 (1-100개) |
-| model | string | ❌ | polyglot | 사용할 모델 |
+| model | string | ❌ | polyglot | 사용할 모델 (polyglot, kogpt2, kanana-nano-2.1b-base) |
+| run_mode | string | ❌ | null | 실행 모드 (auto, cpu, nvidia-gpu, amd-gpu) |
 | top_k | integer | ❌ | 10 | 예측할 토큰 개수 (1-20) |
 | temperature | float | ❌ | 0.5 | 샘플링 온도 (0.1-2.0) |
-| timeout | integer | ❌ | 120 | 타임아웃 (0-600초) |
+| timeout | integer | ❌ | 120 | 타임아웃 (0-600초, 0=무제한) |
 
 **Response (200 OK):**
 ```json
@@ -214,11 +220,22 @@ Authorization: Bearer YOUR_API_KEY
     "그렇네요 날씨가 정말 좋아요"
   ],
   "model": "polyglot",
+  "run_mode": "cpu",
   "top_k": 10,
   "temperature": 0.5,
   "timeout": 60
 }
 ```
+
+**Request Parameters:**
+| 필드 | 타입 | 필수 | 기본값 | 설명 |
+|------|------|------|--------|------|
+| context | array | ✅ | - | 대화 컨텍스트 (1-20개) |
+| model | string | ❌ | polyglot | 사용할 모델 (polyglot, kogpt2, kanana-nano-2.1b-base) |
+| run_mode | string | ❌ | null | 실행 모드 (auto, cpu, nvidia-gpu, amd-gpu) |
+| top_k | integer | ❌ | 10 | 예측할 토큰 개수 (1-20) |
+| temperature | float | ❌ | 0.5 | 샘플링 온도 (0.1-2.0) |
+| timeout | integer | ❌ | 60 | 타임아웃 (0-300초, 0=무제한) |
 
 **Response (200 OK):**
 ```json
@@ -441,8 +458,10 @@ headers = {
 payload = {
     "text": "그래 알았어",
     "model": "polyglot",
+    "run_mode": "cpu",  # 선택적: 서버 설정과 일치해야 함
     "top_k": 10,
-    "temperature": 0.5
+    "temperature": 0.5,
+    "timeout": 60
 }
 
 response = requests.post(url, json=payload, headers=headers)
@@ -472,8 +491,10 @@ curl -X POST "http://localhost:8177/predict/eot" \
   -d '{
     "text": "그래 알았어",
     "model": "polyglot",
+    "run_mode": "cpu",
     "top_k": 10,
-    "temperature": 0.5
+    "temperature": 0.5,
+    "timeout": 60
   }'
 ```
 
@@ -486,8 +507,10 @@ const headers = {
 const payload = {
   text: "그래 알았어",
   model: "polyglot",
+  run_mode: "cpu",  // 선택적: 서버 설정과 일치해야 함
   top_k: 10,
-  temperature: 0.5
+  temperature: 0.5,
+  timeout: 60
 };
 
 fetch(url, {
@@ -534,8 +557,10 @@ texts = [
 payload = {
     "texts": texts,
     "model": "polyglot",
+    "run_mode": "cpu",
     "top_k": 10,
-    "temperature": 0.5
+    "temperature": 0.5,
+    "timeout": 120
 }
 
 response = requests.post(url, json=payload, headers=headers)
@@ -563,9 +588,56 @@ else:
 
 ---
 
-## 7. EOT 토큰 카테고리
+## 7. 실행 모드 (Run Mode)
 
-### 7.1 종료 표현 (eot_expression)
+### 7.1 개요
+EOT API는 다양한 하드웨어 환경에서 실행할 수 있도록 여러 실행 모드를 지원합니다.
+
+### 7.2 사용 가능한 모드
+
+| 모드 | 설명 | 하드웨어 요구사항 | 추천 사용 케이스 |
+|------|------|-------------------|------------------|
+| `auto` | 자동으로 최적 모드 선택 | - | 개발/테스트 환경 |
+| `cpu` | CPU에서 실행 | CPU | 소규모 예측, GPU 없는 환경 |
+| `nvidia-gpu` | NVIDIA GPU에서 실행 | CUDA 지원 GPU | 대규모 처리, 실시간 서비스 |
+| `amd-gpu` | AMD GPU에서 실행 | ROCm 지원 GPU | AMD GPU 환경 |
+
+### 7.3 모드 설정 방법
+
+**서버 시작 시 설정 (권장):**
+```bash
+export EOT_API_RUN_MODE=cpu
+python eot_api.py
+```
+
+**API 요청 시 지정:**
+```json
+{
+  "text": "그래 알았어",
+  "run_mode": "cpu"
+}
+```
+
+**참고:**
+- 서버는 시작 시 설정된 run_mode로 모델을 로드합니다
+- API 요청의 run_mode는 참고용이며, 서버 설정과 다를 경우 무시되거나 경고가 반환될 수 있습니다
+- 모델별로 지원하는 run_mode가 다를 수 있습니다:
+  - `polyglot`, `kogpt2`: 모든 모드 지원
+  - `dna-r1`: nvidia-gpu만 지원 (cpu 시도 시 에러 발생)
+
+### 7.4 성능 비교
+
+| 모드 | 예측 속도 | 메모리 사용량 | 비용 |
+|------|----------|--------------|------|
+| `cpu` | 느림 (~0.5초) | 낮음 (~4GB) | 저렴 |
+| `nvidia-gpu` | 빠름 (~0.1초) | 중간 (~6GB) | 중간 |
+| `amd-gpu` | 빠름 (~0.1초) | 중간 (~6GB) | 중간 |
+
+---
+
+## 8. EOT 토큰 카테고리
+
+### 8.1 종료 표현 (eot_expression)
 `EOT-예측-첫-토큰.md` 파일의 한국어 종료 표현들:
 - 네, 아니요, 그래, 맞아, 맞습니다
 - 알겠습니다, 알았어요
@@ -573,12 +645,12 @@ else:
 - 미안합니다, 죄송합니다
 - 기타 110개 이상의 한국어 종료 표현
 
-### 7.2 사용자 정의 토큰 (user_defined)
+### 8.2 사용자 정의 토큰 (user_defined)
 `user-defined-eots.txt` 파일의 특수문자 및 비정상 문자:
 - 키보드 특수문자: `-`, `_`, `=`, `+`, `|`, `\`, `/`, `*`, `&`, `%`, `$`, `#`, `@`, `~`, `` ` ``, `^`, `<`, `>`
 - 비정상 문자: `�`, `�`, `□`, `■`, `▷`, `◇`, `◆`, `○`, `●`, `☆`, `★` 등
 
-### 7.3 문장부호 (punctuation)
+### 8.3 문장부호 (punctuation)
 - 마침표: `.`, `。`
 - 물음표: `?`, `？`
 - 느낌표: `!`, `！`
@@ -586,48 +658,88 @@ else:
 - 따옴표: `"`, `'`, `"`, `"`, `'`, `'`
 - 괄호: `()`, `[]`, `{}`, `「」`, `『』`, `《》`, `〈〉`, `【】`
 
-### 7.4 비정상 토큰 (abnormal)
+### 8.4 비정상 토큰 (abnormal)
 - 10자 이상의 긴 토큰
 - 알 수 없는 문자열
 
-### 7.5 기타 EOT (other_eot)
+### 8.5 기타 EOT (other_eot)
 - 공백만 있는 토큰
 - 특수 토큰 패턴: `</d>`, `<|endoftext|>`, `[SEP]` 등
 
 ---
 
-## 8. 성능 최적화
+## 9. 성능 최적화
 
-### 8.1 캐싱
+### 9.1 캐싱
 - 동일한 입력에 대한 예측 결과를 캐싱
 - TTL: 5분 (기본값)
 - 캐시 키: `{model}:{text}:{top_k}:{temperature}`
 
-### 8.2 모델 워밍업
+### 9.2 모델 워밍업
 - 서버 시작 시 자동으로 모델 워밍업 수행
 - 첫 예측의 지연 시간 최소화
 
-### 8.3 비동기 처리
+### 9.3 비동기 처리
 - FastAPI의 async/await 활용
 - 동시 요청 처리 최적화
 
 ---
 
-## 9. 서버 실행
+## 10. 서버 실행
 
-### 9.1 기본 실행
+### 10.1 기본 실행
 ```bash
 python eot_api.py
 ```
 
-### 9.2 환경 변수 설정
+### 10.2 환경 변수 설정
 ```bash
+# 호스트와 포트 설정
 export EOT_API_HOST=0.0.0.0
 export EOT_API_PORT=8177
+
+# 실행 모드 설정 (auto, cpu, nvidia-gpu, amd-gpu)
+export EOT_API_RUN_MODE=cpu
+
+# 모델 설정
+export EOT_API_MODEL=polyglot
+
 python eot_api.py
 ```
 
-### 9.3 Docker 실행
+**사용 가능한 환경 변수:**
+- `EOT_API_HOST`: 서버 호스트 (기본값: 0.0.0.0)
+- `EOT_API_PORT`: 서버 포트 (기본값: 8177)
+- `EOT_API_RUN_MODE`: 실행 모드 (기본값: auto)
+  - `auto`: 자동 감지
+  - `cpu`: CPU 모드
+  - `nvidia-gpu`: NVIDIA GPU 모드
+  - `amd-gpu`: AMD GPU 모드
+- `EOT_API_MODEL`: 사용할 모델 (기본값: polyglot)
+
+### 10.3 CLI 실행 (eot_predictor.py)
+
+EOT 예측기를 CLI로 직접 실행할 수도 있습니다:
+
+```bash
+# 기본 실행 (auto 모드)
+python eot_predictor.py -t "그래 알았어"
+
+# CPU 모드로 실행
+python eot_predictor.py --run-mode cpu --model polyglot -t "그래 알았어"
+
+# 대화형 모드
+python eot_predictor.py --run-mode cpu --model polyglot
+
+# 다양한 옵션
+python eot_predictor.py --run-mode cpu \
+  --model polyglot \
+  --text "그래 알았어" \
+  --top-k 15 \
+  --temperature 0.5
+```
+
+### 10.4 Docker 실행
 ```dockerfile
 FROM python:3.9-slim
 
@@ -637,18 +749,34 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
+# 환경 변수 설정
+ENV EOT_API_HOST=0.0.0.0
+ENV EOT_API_PORT=8177
+ENV EOT_API_RUN_MODE=cpu
+ENV EOT_API_MODEL=polyglot
+
 EXPOSE 8177
 CMD ["python", "eot_api.py"]
 ```
 
 ```bash
+# 이미지 빌드
 docker build -t eot-api .
+
+# 기본 실행
 docker run -p 8177:8177 eot-api
+
+# 환경 변수 오버라이드
+docker run -p 8177:8177 \
+  -e EOT_API_RUN_MODE=nvidia-gpu \
+  -e EOT_API_MODEL=polyglot \
+  --gpus all \
+  eot-api
 ```
 
 ---
 
-## 10. API 문서 자동 생성
+## 11. API 문서 자동 생성
 
 FastAPI는 자동으로 OpenAPI 문서를 생성합니다:
 
@@ -658,7 +786,7 @@ FastAPI는 자동으로 OpenAPI 문서를 생성합니다:
 
 ---
 
-## 11. 문의 및 지원
+## 12. 문의 및 지원
 
 - **GitHub**: https://github.com/yourusername/eot-predictor
 - **이메일**: support@eot-predictor.example.com

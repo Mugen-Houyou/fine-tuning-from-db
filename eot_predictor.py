@@ -37,10 +37,10 @@ console = Console()
 class EOTPredictor:
     """EOT 예측기 클래스"""
 
-    def __init__(self, model_name: str = "polyglot"):
+    def __init__(self, model_name: str = "polyglot", run_mode: str = "auto"):
         """초기화"""
         self.model_manager = ModelManager()
-        self.model_manager.set_run_mode("auto")
+        self.model_manager.set_run_mode(run_mode)
 
         # polyglot 모델 로드
         success, message = self.model_manager.load_model(model_name)
@@ -410,13 +410,15 @@ Temperature는 예측의 무작위성을 조절합니다.
 @click.option('--model', '-m', default='polyglot',
               type=click.Choice(['polyglot', 'kogpt2', 'kanana-nano-2.1b-base'], case_sensitive=False),
               help='사용할 모델')
+@click.option('--run-mode', type=click.Choice(['auto', 'cpu', 'nvidia-gpu', 'amd-gpu'], case_sensitive=False),
+              default='auto', help='실행 모드')
 @click.option('--top-k', '-k', default=10, type=int, help='예측할 토큰 개수')
 @click.option('--temperature', '--temp', default=0.5, type=float, help='샘플링 온도')
-def main(text, model, top_k, temperature):
+def main(text, model, run_mode, top_k, temperature):
     """채팅 EOT (End-of-Turn) 판독기"""
 
     # EOT 예측기 초기화
-    predictor = EOTPredictor(model_name=model)
+    predictor = EOTPredictor(model_name=model, run_mode=run_mode)
 
     if text:
         # 단일 예측 모드
