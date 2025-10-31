@@ -228,6 +228,10 @@ function displayResults(result) {
     const container = elements.results;
     container.innerHTML = '';
 
+    // Extract data from API response structure
+    const data = result.data || result; // Support both {success, data, meta} and direct data
+    const cached = result.cached !== undefined ? result.cached : false;
+
     // Create result card
     const card = document.createElement('div');
     card.className = 'result-card';
@@ -239,19 +243,19 @@ function displayResults(result) {
     const meta = document.createElement('div');
     meta.className = 'result-meta';
     meta.innerHTML = `
-        <strong>입력:</strong> "${result.text}" <br>
-        <strong>모델:</strong> ${result.model} |
-        <strong>예측 시간:</strong> ${result.elapsed_time.toFixed(3)}초 |
-        <strong>캐시:</strong> ${result.cached ? 'HIT ✓' : 'MISS'}
+        <strong>입력:</strong> "${data.input_text || data.text}" <br>
+        <strong>모델:</strong> ${data.model} |
+        <strong>예측 시간:</strong> ${data.elapsed_time.toFixed(3)}초 |
+        <strong>캐시:</strong> ${cached ? 'HIT ✓' : 'MISS'}
     `;
 
     const eotProb = document.createElement('div');
     eotProb.className = 'eot-probability';
-    const eotPercent = (result.eot_probability * 100).toFixed(2);
+    const eotPercent = (data.eot_probability * 100).toFixed(2);
 
-    if (result.eot_probability > 0.7) {
+    if (data.eot_probability > 0.7) {
         eotProb.classList.add('eot-high');
-    } else if (result.eot_probability > 0.3) {
+    } else if (data.eot_probability > 0.3) {
         eotProb.classList.add('eot-medium');
     } else {
         eotProb.classList.add('eot-low');
@@ -266,7 +270,7 @@ function displayResults(result) {
     const grid = document.createElement('div');
     grid.className = 'predictions-grid';
 
-    result.predictions.forEach((pred, index) => {
+    data.predictions.forEach((pred, index) => {
         const item = document.createElement('div');
         item.className = 'prediction-item';
 
@@ -358,12 +362,15 @@ function clearInput() {
  * Add prediction to history
  */
 function addToHistory(text, result) {
+    // Extract data from API response
+    const data = result.data || result;
+
     const historyItem = {
         text: text,
-        model: result.model,
-        eot_probability: result.eot_probability,
+        model: data.model,
+        eot_probability: data.eot_probability,
         timestamp: new Date().toISOString(),
-        result: result
+        result: result // Store full result for restoration
     };
 
     predictionHistory.unshift(historyItem);

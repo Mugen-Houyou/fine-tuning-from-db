@@ -26,8 +26,8 @@
 
 ### 2.1 Base URL
 ```
-Production: https://api.korean-predictor.example.com/v1
-Development: http://localhost:8000/v1
+Production: https://api.korean-predictor.example.com
+Development: http://localhost:8000
 ```
 
 ### 2.2 인증
@@ -652,7 +652,7 @@ X-RateLimit-Reset: 1635782400
 ```python
 import requests
 
-url = "https://api.korean-predictor.example.com/v1/predict"
+url = "https://api.korean-predictor.example.com/predict"
 headers = {
     "Authorization": "Bearer kp_live_your_api_key_here",
     "Content-Type": "application/json"
@@ -677,7 +677,7 @@ else:
 
 ### 10.2 cURL
 ```bash
-curl -X POST "https://api.korean-predictor.example.com/v1/predict" \
+curl -X POST "https://api.korean-predictor.example.com/predict" \
   -H "Authorization: Bearer kp_live_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -690,7 +690,7 @@ curl -X POST "https://api.korean-predictor.example.com/v1/predict" \
 
 ### 10.3 JavaScript (fetch)
 ```javascript
-const url = "https://api.korean-predictor.example.com/v1/predict";
+const url = "https://api.korean-predictor.example.com/predict";
 const headers = {
   "Authorization": "Bearer kp_live_your_api_key_here",
   "Content-Type": "application/json"
