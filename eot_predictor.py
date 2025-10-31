@@ -200,11 +200,11 @@ class EOTPredictor:
         console.print(f"[bold]EOT 확률:[/bold] [{color}]{eot_prob*100:.1f}%[/{color}]  {bar}")
 
         if eot_prob > 0.7:
-            console.print("[red]→ 발화가 끝날 가능성이 높습니다[/red]")
+            console.print("[red]→ 높은 확률로 발화가 끝남[/red]")
         elif eot_prob > 0.3:
-            console.print("[yellow]→ 발화가 끝날 수도 있습니다[/yellow]")
+            console.print("[yellow]→ 발화가 끝날 수도 있음[/yellow]")
         else:
-            console.print("[green]→ 발화가 계속될 가능성이 높습니다[/green]")
+            console.print("[green]→ 아직 발화가 끝나지 않았을 가능성이 큼[/green]")
 
         # 상세 예측 결과 표시
         console.print("\n[bold]예측 토큰 상세:[/bold]")
