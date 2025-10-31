@@ -91,7 +91,7 @@ class EOTPredictor:
         with open(eot_file, 'r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):
+                if line:  # 빈 줄이 아닌 모든 줄을 토큰으로 간주
                     eot_tokens.add(line)
 
         logger.info(f"EOT 토큰 {len(eot_tokens)}개 로드됨")
