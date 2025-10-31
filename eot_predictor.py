@@ -220,7 +220,12 @@ class EOTPredictor:
         """대화형 모드"""
         console.print("[bold cyan]채팅 EOT 판독기[/bold cyan]")
         console.print("텍스트를 입력하면 대화 종료 확률을 예측합니다.")
-        console.print("종료하려면 'quit', 'exit', 또는 'q'를 입력하세요.\n")
+        console.print("종료하려면 'quit', 'exit', 또는 'q'를 입력하세요.")
+        console.print("명령어를 보려면 '/help'를 입력하세요.\n")
+
+        # 기본 설정값
+        self._top_k = 10
+        self._temperature = 1.3
 
         while True:
             try:
@@ -232,6 +237,11 @@ class EOTPredictor:
                     console.print("[dim]프로그램을 종료합니다.[/dim]")
                     break
 
+                # 특수 명령 처리
+                if text.startswith('/'):
+                    self._handle_command(text)
+                    continue
+
                 # 빈 입력 처리
                 if not text:
                     console.print("[dim]텍스트를 입력해주세요.[/dim]")
@@ -239,7 +249,7 @@ class EOTPredictor:
 
                 # EOT 예측
                 with console.status("[bold green]예측 중...[/bold green]"):
-                    eot_prob, details = self.predict_eot(text)
+                    eot_prob, details = self.predict_eot(text, self._top_k, self._temperature)
 
                 # 결과 표시
                 self.display_results(text, eot_prob, details)
@@ -250,6 +260,115 @@ class EOTPredictor:
             except Exception as e:
                 console.print(f"[red]오류 발생: {e}[/red]")
                 logger.error(f"예측 중 오류: {e}", exc_info=True)
+
+    def _handle_command(self, command: str):
+        """특수 명령 처리"""
+        cmd = command[1:].lower().split()
+
+        if not cmd:
+            return
+
+        if cmd[0] == 'help':
+            self._show_help()
+        elif cmd[0] == 'config':
+            self._show_config()
+        elif cmd[0] == 'temperature' or cmd[0] == 'temp':
+            if len(cmd) >= 2:
+                self._set_temperature(cmd[1])
+            else:
+                console.print(f"[cyan]현재 Temperature: {self._temperature}[/cyan]")
+        elif cmd[0] == 'topk' or cmd[0] == 'top_k':
+            if len(cmd) >= 2:
+                self._set_top_k(cmd[1])
+            else:
+                console.print(f"[cyan]현재 Top-K: {self._top_k}[/cyan]")
+        elif cmd[0] == 'set':
+            if len(cmd) >= 3:
+                self._set_config(cmd[1], cmd[2])
+            else:
+                console.print("[yellow]사용법: /set <옵션> <값>[/yellow]")
+        else:
+            console.print(f"[red]알 수 없는 명령: {command}[/red]")
+            console.print("[dim]/help를 입력하면 사용 가능한 명령을 볼 수 있습니다.[/dim]")
+
+    def _show_help(self):
+        """도움말 표시"""
+        help_text = """
+[bold]사용 가능한 명령:[/bold]
+
+/help                  - 이 도움말 표시
+/config                - 현재 설정 표시
+/temperature <숫자>    - Temperature 조정 (0.1-2.0)
+/temperature           - 현재 Temperature 확인
+/topk <숫자>           - Top-K 조정 (1-20)
+/topk                  - 현재 Top-K 확인
+/set topk <숫자>       - Top-K 설정
+/set temp <숫자>       - Temperature 설정
+quit, exit, q          - 프로그램 종료
+
+[bold]📊 EOT 예측 정보:[/bold]
+다음 토큰 예측 결과를 분석하여 대화 종료(EOT) 확률을 계산합니다.
+EOT 확률이 높으면 대화가 끝날 가능성이 높습니다.
+
+[bold]🌡️  Temperature 설정:[/bold]
+Temperature는 예측의 무작위성을 조절합니다.
+- 낮은 값(0.1-0.5): 보수적, 일관된 예측
+- 중간 값(0.5-1.5): 균형잡힌 예측
+- 높은 값(1.5-2.0): 창의적, 다양한 예측
+
+[bold]🔢 Top-K 설정:[/bold]
+예측할 토큰의 개수를 지정합니다 (1-20).
+더 많은 토큰을 분석할수록 EOT 확률이 정확해집니다.
+        """
+        console.print(help_text)
+
+    def _show_config(self):
+        """현재 설정 표시"""
+        from rich.table import Table
+
+        table = Table(title="현재 설정")
+        table.add_column("항목", style="cyan")
+        table.add_column("값", style="green")
+
+        table.add_row("Top-K", str(self._top_k))
+        table.add_row("Temperature", str(self._temperature))
+        table.add_row("EOT 토큰 개수", str(len(self.eot_tokens)))
+
+        console.print(table)
+
+    def _set_temperature(self, value: str):
+        """Temperature 설정"""
+        try:
+            new_value = float(value)
+            if 0.1 <= new_value <= 2.0:
+                self._temperature = new_value
+                console.print(f"[green]Temperature를 {new_value}로 설정했습니다.[/green]")
+            else:
+                console.print("[red]Temperature는 0.1-2.0 사이여야 합니다.[/red]")
+        except ValueError:
+            console.print(f"[red]잘못된 값: {value}[/red]")
+
+    def _set_top_k(self, value: str):
+        """Top-K 설정"""
+        try:
+            new_value = int(value)
+            if 1 <= new_value <= 20:
+                self._top_k = new_value
+                console.print(f"[green]Top-K를 {new_value}로 설정했습니다.[/green]")
+            else:
+                console.print("[red]Top-K는 1-20 사이여야 합니다.[/red]")
+        except ValueError:
+            console.print(f"[red]잘못된 값: {value}[/red]")
+
+    def _set_config(self, option: str, value: str):
+        """설정 변경"""
+        if option in ['topk', 'top_k']:
+            self._set_top_k(value)
+        elif option in ['temp', 'temperature']:
+            self._set_temperature(value)
+        else:
+            console.print(f"[red]알 수 없는 옵션: {option}[/red]")
+            console.print("[dim]사용 가능한 옵션: topk, temp[/dim]")
 
 
 @click.command()
