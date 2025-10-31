@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국어 다음 토큰 예측기 - Korean Predictor</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🤖 Korean Predictor</h1>
+            <p class="subtitle">한국어 다음 토큰 예측 및 End-of-Turn 확률 분석</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Settings Panel -->
+            <aside class="settings-panel">
+                <h2>⚙️ 설정</h2>
+
+                <div class="setting-group">
+                    <label for="api-url">API URL</label>
+                    <input type="text" id="api-url" value="http://localhost:8000" placeholder="http://localhost:8000">
+                </div>
+
+                <div class="setting-group">
+                    <label for="api-key">API Key</label>
+                    <input type="password" id="api-key" value="kp_test_development_key_12345" placeholder="Bearer token">
+                    <small>개발 모드 기본값: kp_test_development_key_12345</small>
+                </div>
+
+                <div class="setting-group">
+                    <label for="model-select">모델 선택</label>
+                    <select id="model-select">
+                        <option value="kogpt2">KoGPT2 (125M)</option>
+                        <option value="kanana">Kanana (2.1B)</option>
+                        <option value="polyglot-ko-5.8b">Polyglot (5.8B)</option>
+                        <option value="dna-r1">DNA-R1 (14B)</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label for="top-k">Top-K: <span id="top-k-value">10</span></label>
+                    <input type="range" id="top-k" min="1" max="20" value="10">
+                </div>
+
+                <div class="setting-group">
+                    <label for="temperature">Temperature: <span id="temperature-value">1.3</span></label>
+                    <input type="range" id="temperature" min="0.1" max="2.0" step="0.1" value="1.3">
+                    <small id="temp-warning" class="hidden" style="color: #f39c12;">⚠️ 추론 모델은 temperature 미지원</small>
+                </div>
+
+                <div class="setting-group">
+                    <label for="timeout">Timeout (초): <span id="timeout-value">60</span></label>
+                    <input type="range" id="timeout" min="10" max="300" step="10" value="60">
+                </div>
+
+                <div class="setting-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="complete-word" checked>
+                        완전한 어절 생성
+                    </label>
+                </div>
+
+                <div class="setting-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="include-special" checked>
+                        특수 토큰 포함
+                    </label>
+                </div>
+
+                <button id="check-health" class="btn btn-secondary">🏥 서버 상태 확인</button>
+            </aside>
+
+            <!-- Prediction Area -->
+            <section class="prediction-area">
+                <div class="input-section">
+                    <h2>📝 텍스트 입력</h2>
+                    <textarea id="input-text" placeholder="예측할 한국어 텍스트를 입력하세요...&#10;예: 안녕하세요"></textarea>
+                    <div class="button-group">
+                        <button id="predict-btn" class="btn btn-primary">🔮 예측하기</button>
+                        <button id="clear-btn" class="btn btn-secondary">🗑️ 지우기</button>
+                    </div>
+                </div>
+
+                <div class="results-section">
+                    <h2>📊 예측 결과</h2>
+                    <div id="loading" class="hidden">
+                        <div class="spinner"></div>
+                        <p>예측 중...</p>
+                    </div>
+                    <div id="error-message" class="error-message hidden"></div>
+                    <div id="results" class="results-container"></div>
+                </div>
+
+                <div class="history-section">
+                    <h2>📜 히스토리</h2>
+                    <button id="clear-history-btn" class="btn btn-small">히스토리 삭제</button>
+                    <div id="history" class="history-container"></div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Korean Predictor v1.0.0 |
+               <a href="https://github.com/Mugen-Houyou/fine-tuning-from-db" target="_blank">GitHub</a> |
+               <a href="../REST-API.md" target="_blank">API 문서</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Status Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
