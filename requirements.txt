@@ -1,0 +1,21 @@
+# Core dependencies
+torch>=2.0.0
+transformers>=4.45.0  # Kanana 모델 지원을 위한 최소 버전
+tokenizers>=0.15.0
+packaging>=20.0  # 버전 체크용
+
+# CLI and utilities
+click>=8.1.7
+rich>=13.7.0
+prompt-toolkit>=3.0.41
+
+# Performance and caching
+numpy>=1.24.0
+diskcache>=5.6.3
+
+# Optional GPU support (uncomment if using CUDA)
+# torch==2.0.0+cu118
+
+# Development dependencies
+pytest>=7.4.3
+black>=23.11.0
