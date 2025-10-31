@@ -118,6 +118,9 @@ class EOTPredictor:
                 if line and not line.startswith('#'):  # 빈 줄과 주석 제외
                     user_eot_tokens.add(line)
 
+        # '#'은 파일에서 주석으로 처리되므로 여기서 직접 추가
+        user_eot_tokens.add('#')
+
         logger.info(f"사용자 정의 EOT 토큰 {len(user_eot_tokens)}개 로드됨")
         return user_eot_tokens
 
@@ -185,9 +188,9 @@ class EOTPredictor:
 
     def display_results(self, text: str, eot_prob: float, details: List[Tuple[str, float, bool]]):
         """결과 표시"""
-        console.print("\n" + "="*60)
-        console.print(f"[bold blue]입력 텍스트:[/bold blue] {text}")
-        console.print("="*60 + "\n")
+        # console.print("\n" + "="*60)
+        # console.print(f"[bold blue]입력 텍스트:[/bold blue] {text}")
+        # console.print("="*60 + "\n")
 
         # EOT 확률 표시
         color = "red" if eot_prob > 0.7 else "yellow" if eot_prob > 0.3 else "green"
