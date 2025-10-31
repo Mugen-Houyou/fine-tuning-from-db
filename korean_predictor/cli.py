@@ -188,6 +188,11 @@ class CLI:
                     self.console.print("[yellow]사용법: /model info 또는 /model list[/yellow]")
             else:
                 self.console.print("[yellow]사용법: /model info 또는 /model list[/yellow]")
+        elif cmd[0] == 'temperature' or cmd[0] == 'temp':
+            if len(cmd) >= 2:
+                self._set_temperature(cmd[1])
+            else:
+                self.console.print(f"[cyan]현재 Temperature: {self.config.DEFAULT_TEMPERATURE}[/cyan]")
         elif cmd[0] == 'set':
             if len(cmd) >= 3:
                 self._set_config(cmd[1], cmd[2])
@@ -201,19 +206,24 @@ class CLI:
         help_text = """
 [bold]사용 가능한 명령:[/bold]
 
-/help              - 이 도움말 표시
-/config            - 현재 설정 표시
-/cache             - 캐시 통계 표시
-/cache clear       - 캐시 비우기
-/model info        - 현재 로드된 모델 정보
-/model list        - 사용 가능한 모델 목록
-/set top_k <숫자>  - 예측 개수 설정 (1-10)
-/set temp <숫자>   - 온도 설정 (0.1-2.0)
-quit, exit, q      - 프로그램 종료
+/help                  - 이 도움말 표시
+/config                - 현재 설정 표시
+/cache                 - 캐시 통계 표시
+/cache clear           - 캐시 비우기
+/model info            - 현재 로드된 모델 정보
+/model list            - 사용 가능한 모델 목록
+/set top_k <숫자>      - 예측 개수 설정 (1-10)
+/temperature <숫자>    - Temperature 조정 (0.1-2.0, 지원 모델만)
+/temperature           - 현재 Temperature 확인
+quit, exit, q          - 프로그램 종료
 
 [bold]📊 예측 정보:[/bold]
 모든 예측에서 다음 토큰 목록과 발화 종료(EOT) 확률을 함께 표시합니다.
 EOT 확률이 높으면 화자가 말을 끝낼 가능성이 높습니다.
+
+[bold]🌡️  Temperature 설정:[/bold]
+Temperature는 예측의 무작위성을 조절합니다. (높을수록 다양한 결과)
+일부 추론 특화 모델(DNA-R1 등)은 temperature 조정이 불가능합니다.
 
 [bold]💡 모델 변경:[/bold]
 다른 모델을 사용하려면 프로그램 재시작이 필요합니다.
@@ -281,6 +291,10 @@ EOT 확률이 높으면 화자가 말을 끝낼 가능성이 높습니다.
         table.add_row("파라미터", f"{info['parameters']:.1f}M")
         table.add_row("디바이스", info['device'])
 
+        # temperature 지원 시 현재 값 표시
+        if info.get('supports_temperature', True):
+            table.add_row("Temperature", f"{self.config.DEFAULT_TEMPERATURE}")
+
         self.console.print(table)
 
     def _list_available_models(self):
@@ -310,6 +324,25 @@ EOT 확률이 높으면 화자가 말을 끝낼 가능성이 높습니다.
         self.console.print("  프로그램 재시작: python main.py --model <모델명>")
         self.console.print("  예시: python main.py --model dna-r1")
 
+    def _set_temperature(self, value: str):
+        """Temperature 설정 (모델이 지원하는 경우에만)"""
+        # temperature 지원 여부 확인
+        info = self.predictor.model_manager.get_model_info()
+        if not info.get('supports_temperature', True):
+            self.console.print("[red]현재 모델은 temperature를 지원하지 않습니다.[/red]")
+            self.console.print("[yellow]추론 특화 모델(DNA-R1 등)은 temperature 조정이 불가능합니다.[/yellow]")
+            return
+
+        try:
+            new_value = float(value)
+            if 0.1 <= new_value <= 2.0:
+                self.config.DEFAULT_TEMPERATURE = new_value
+                self.console.print(f"[green]Temperature를 {new_value}로 설정했습니다.[/green]")
+            else:
+                self.console.print("[red]Temperature는 0.1-2.0 사이여야 합니다.[/red]")
+        except ValueError:
+            self.console.print(f"[red]잘못된 값: {value}[/red]")
+
     def _set_config(self, option: str, value: str):
         """설정 변경"""
         try:
@@ -322,12 +355,8 @@ EOT 확률이 높으면 화자가 말을 끝낼 가능성이 높습니다.
                     self.console.print("[red]예측 개수는 1-10 사이여야 합니다.[/red]")
 
             elif option == 'temp':
-                new_value = float(value)
-                if 0.1 <= new_value <= 2.0:
-                    self.config.DEFAULT_TEMPERATURE = new_value
-                    self.console.print(f"[green]온도를 {new_value}로 설정했습니다.[/green]")
-                else:
-                    self.console.print("[red]온도는 0.1-2.0 사이여야 합니다.[/red]")
+                # /set temp 명령은 _set_temperature로 리다이렉트
+                self._set_temperature(value)
 
             else:
                 self.console.print(f"[red]알 수 없는 옵션: {option}[/red]")

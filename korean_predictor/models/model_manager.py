@@ -94,6 +94,7 @@ class ModelManager:
         """초기화는 한 번만 수행"""
         if self._device is None:
             self._setup_device('auto')  # 기본값은 auto
+            self._model_name = None  # 로드된 모델 이름 저장
 
     def set_run_mode(self, run_mode='auto'):
         """실행 모드 설정
@@ -286,6 +287,9 @@ class ModelManager:
             model_size = sum(p.numel() for p in self._model.parameters()) / 1e6
             logger.info(f"모델 로드 완료: {model_size:.1f}M 파라미터")
 
+            # 모델 이름 저장
+            self._model_name = model_name
+
             # 성공 메시지 구성
             if model_info:
                 success_msg = (
@@ -330,6 +334,13 @@ class ModelManager:
         if not self.is_loaded():
             return {"loaded": False}
 
+        # temperature 지원 여부 확인 (추론 모델은 temperature 미지원)
+        supports_temperature = True
+        if self._model_name:
+            model_metadata = self.SUPPORTED_MODELS.get(self._model_name)
+            if model_metadata and model_metadata.get('reasoning_model', False):
+                supports_temperature = False
+
         return {
             "loaded": True,
             "model_name": self._model.config._name_or_path,
@@ -337,6 +348,7 @@ class ModelManager:
             "max_length": self._model.config.max_position_embeddings if hasattr(self._model.config, 'max_position_embeddings') else "unknown",
             "device": str(self._device),
             "parameters": sum(p.numel() for p in self._model.parameters()) / 1e6,
+            "supports_temperature": supports_temperature,
         }
 
     def unload_model(self):
