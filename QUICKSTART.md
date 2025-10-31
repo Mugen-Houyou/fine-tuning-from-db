@@ -166,6 +166,69 @@ python main.py -f input.txt
 quit, exit, q      - 종료
 ```
 
+### 3.6 REST API 사용 (curl)
+
+**REST API 서버 시작:**
+```bash
+python run_api.py --model kogpt2 --port 8000
+```
+
+**1. 헬스 체크:**
+```bash
+curl http://localhost:8000/health
+```
+
+**2. 예측 요청 (기본):**
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer kp_test_development_key_12345" \
+  -d '{
+    "text": "안녕하세요",
+    "model": "kogpt2",
+    "top_k": 10,
+    "temperature": 1.3,
+    "complete_word": true,
+    "include_special_tokens": true,
+    "timeout": 60
+  }'
+```
+
+**3. 배치 예측:**
+```bash
+curl -X POST http://localhost:8000/predict/batch \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer kp_test_development_key_12345" \
+  -d '{
+    "texts": ["안녕하세요", "반갑습니다"],
+    "model": "kogpt2",
+    "top_k": 5
+  }'
+```
+
+**4. 모델 관리:**
+```bash
+# 모델 목록 확인
+curl http://localhost:8000/models
+
+# 모델 로드
+curl -X POST http://localhost:8000/models/polyglot/load
+```
+
+**5. 캐시 관리:**
+```bash
+# 캐시 통계
+curl http://localhost:8000/cache/stats
+
+# 캐시 비우기
+curl -X POST http://localhost:8000/cache/clear
+```
+
+**웹 프론트엔드:**
+- 브라우저에서 `web/index.html` 열기
+- 또는 웹 서버 실행: `cd web && python -m http.server 8080`
+- `http://localhost:8080`에서 접속
+
 ---
 
 ## 4. 테스트 스크립트 실행
