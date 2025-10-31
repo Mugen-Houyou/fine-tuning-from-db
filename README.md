@@ -10,6 +10,7 @@
 - ✅ 대화형/비대화형/배치 처리 모드
 - ✅ 예측 캐싱으로 빠른 응답
 - ✅ Rich CLI로 보기 좋은 출력
+- 🆕 REST API 지원 (FastAPI 기반)
 
 ## 목차
 
@@ -21,6 +22,7 @@
 6. [실전 활용 예시](#6-실전-활용-예시)
 7. [팁과 트릭](#7-팁과-트릭)
 8. [자주 묻는 질문](#8-자주-묻는-질문)
+9. [REST API 사용법](#9-rest-api-사용법)
 
 ---
 
@@ -926,6 +928,106 @@ pip install --upgrade transformers
 ```bash
 python -c "import transformers; print(transformers.__version__)"
 ```
+
+---
+
+## 9. REST API 사용법
+
+이제 Korean Predictor를 REST API 서버로도 사용할 수 있습니다!
+
+### 9.1 API 서버 시작
+
+**기본 실행:**
+```bash
+python run_api.py
+```
+
+**옵션 지정:**
+```bash
+python run_api.py --model kogpt2 --run-mode cpu --port 8000
+```
+
+**사용 가능한 옵션:**
+- `--model, -m`: 모델 선택 (kogpt2, kanana, polyglot-ko-5.8b, dna-r1)
+- `--run-mode, -r`: 실행 모드 (auto, cpu, nvidia-gpu, radeon-gpu)
+- `--host`: 호스트 주소 (기본값: 0.0.0.0)
+- `--port, -p`: 포트 번호 (기본값: 8000)
+- `--reload`: 개발 모드 (코드 변경 시 자동 재시작)
+- `--workers, -w`: 워커 프로세스 수 (기본값: 1)
+
+### 9.2 API 문서 확인
+
+서버 실행 후 다음 URL에서 자동 생성된 API 문서를 확인할 수 있습니다:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### 9.3 API 사용 예시
+
+**Python 예시:**
+```python
+import requests
+
+url = "http://localhost:8000/v1/predict"
+headers = {
+    "Authorization": "Bearer kp_test_development_key_12345",
+    "Content-Type": "application/json"
+}
+payload = {
+    "text": "안녕하세요",
+    "model": "kogpt2",
+    "top_k": 10,
+    "temperature": 1.3
+}
+
+response = requests.post(url, json=payload, headers=headers)
+data = response.json()
+
+if data["success"]:
+    for pred in data["data"]["predictions"]:
+        print(f"{pred['rank']}. {pred['token']}: {pred['probability']:.2%}")
+```
+
+**cURL 예시:**
+```bash
+curl -X POST "http://localhost:8000/v1/predict" \
+  -H "Authorization: Bearer kp_test_development_key_12345" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "안녕하세요",
+    "model": "kogpt2",
+    "top_k": 10
+  }'
+```
+
+### 9.4 주요 엔드포인트
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `/v1/predict` | POST | 다음 토큰 예측 |
+| `/v1/predict/context` | POST | 컨텍스트 기반 예측 |
+| `/v1/predict/batch` | POST | 배치 예측 |
+| `/v1/models/current` | GET | 현재 모델 정보 |
+| `/v1/models` | GET | 사용 가능한 모델 목록 |
+| `/v1/cache/stats` | GET | 캐시 통계 |
+| `/v1/cache` | DELETE | 캐시 삭제 |
+| `/v1/health` | GET | 헬스체크 |
+
+### 9.5 API 인증
+
+개발 모드에서는 기본 테스트 API 키가 자동으로 설정됩니다:
+```
+Bearer kp_test_development_key_12345
+```
+
+프로덕션 환경에서는 환경 변수로 API 키를 설정하세요:
+```bash
+export API_KEYS="your_api_key_1,your_api_key_2"
+python run_api.py
+```
+
+### 9.6 자세한 API 문서
+
+전체 API 명세는 `REST-API.md` 파일을 참조하세요.
 
 ---
 
