@@ -5,6 +5,7 @@ import torch
 from typing import List, Tuple, Optional
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,8 @@ class PredictionService:
         temperature: float = 1,
         complete_word: bool = True,
         max_length: int = 128,
-        include_special_tokens: bool = True
+        include_special_tokens: bool = True,
+        timeout: Optional[float] = None
     ) -> Tuple[float, List[Tuple[str, float]]]:
         """
         다음 토큰/어절 예측 + End-of-Turn 확률
@@ -48,10 +50,42 @@ class PredictionService:
             complete_word: True면 완전한 어절까지 생성
             max_length: 최대 입력 길이
             include_special_tokens: True면 <eos> 등 특수 토큰 포함
+            timeout: 예측 타임아웃 (초, None이면 무제한)
 
         Returns:
             (end_of_turn_probability, [(예측 텍스트, 확률)]) 튜플
+
+        Raises:
+            TimeoutError: 타임아웃 초과 시
         """
+        if timeout is not None and timeout > 0:
+            # 타임아웃 적용
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    self._predict_next_tokens_impl,
+                    text, top_k, temperature, complete_word, max_length, include_special_tokens
+                )
+                try:
+                    return future.result(timeout=timeout)
+                except FuturesTimeoutError:
+                    logger.warning(f"예측 타임아웃: {timeout}초 초과")
+                    raise TimeoutError(f"예측이 {timeout}초 내에 완료되지 않았습니다.")
+        else:
+            # 타임아웃 없음
+            return self._predict_next_tokens_impl(
+                text, top_k, temperature, complete_word, max_length, include_special_tokens
+            )
+
+    def _predict_next_tokens_impl(
+        self,
+        text: str,
+        top_k: int,
+        temperature: float,
+        complete_word: bool,
+        max_length: int,
+        include_special_tokens: bool
+    ) -> Tuple[float, List[Tuple[str, float]]]:
+        """실제 예측 구현 (내부 메서드)"""
         start_time = time.time()
 
         # 캐시 확인

@@ -148,19 +148,27 @@ class CLI:
         with self.console.status("[bold green]예측 중...[/bold green]", spinner="dots") as status:
             start_time = time.time()
 
-            # 다음 토큰 예측 + EOT 확률 (통합)
-            eot_prob, predictions = self.predictor.predict_next_tokens(
-                text,
-                top_k=self.config.DEFAULT_TOP_K,
-                temperature=self.config.DEFAULT_TEMPERATURE,
-                complete_word=self.config.COMPLETE_WORD,
-                include_special_tokens=self.config.INCLUDE_SPECIAL_TOKENS
-            )
+            try:
+                # 다음 토큰 예측 + EOT 확률 (통합) + 타임아웃
+                eot_prob, predictions = self.predictor.predict_next_tokens(
+                    text,
+                    top_k=self.config.DEFAULT_TOP_K,
+                    temperature=self.config.DEFAULT_TEMPERATURE,
+                    complete_word=self.config.COMPLETE_WORD,
+                    include_special_tokens=self.config.INCLUDE_SPECIAL_TOKENS,
+                    timeout=self.config.DEFAULT_TIMEOUT
+                )
 
-            elapsed = time.time() - start_time
+                elapsed = time.time() - start_time
 
-        # 결과 표시 (항상 EOT 확률 포함)
-        self.display_predictions(predictions, elapsed, eot_prob)
+                # 결과 표시 (항상 EOT 확률 포함)
+                self.display_predictions(predictions, elapsed, eot_prob)
+
+            except TimeoutError as e:
+                elapsed = time.time() - start_time
+                self.console.print(f"[red]타임아웃 오류: {str(e)}[/red]")
+                self.console.print(f"[yellow]경과 시간: {elapsed:.1f}초 (제한: {self.config.DEFAULT_TIMEOUT}초)[/yellow]")
+                self.console.print(f"[cyan]Tip: /timeout 명령으로 타임아웃 시간을 조정할 수 있습니다.[/cyan]")
 
     def _handle_command(self, command: str):
         """특수 명령 처리"""
@@ -193,6 +201,11 @@ class CLI:
                 self._set_temperature(cmd[1])
             else:
                 self.console.print(f"[cyan]현재 Temperature: {self.config.DEFAULT_TEMPERATURE}[/cyan]")
+        elif cmd[0] == 'timeout':
+            if len(cmd) >= 2:
+                self._set_timeout(cmd[1])
+            else:
+                self.console.print(f"[cyan]현재 Timeout: {self.config.DEFAULT_TIMEOUT}초[/cyan]")
         elif cmd[0] == 'set':
             if len(cmd) >= 3:
                 self._set_config(cmd[1], cmd[2])
@@ -215,6 +228,8 @@ class CLI:
 /set top_k <숫자>      - 예측 개수 설정 (1-10)
 /temperature <숫자>    - Temperature 조정 (0.1-2.0, 지원 모델만)
 /temperature           - 현재 Temperature 확인
+/timeout <숫자>        - Timeout 설정 (초, 0=무제한)
+/timeout               - 현재 Timeout 확인
 quit, exit, q          - 프로그램 종료
 
 [bold]📊 예측 정보:[/bold]
@@ -224,6 +239,10 @@ EOT 확률이 높으면 화자가 말을 끝낼 가능성이 높습니다.
 [bold]🌡️  Temperature 설정:[/bold]
 Temperature는 예측의 무작위성을 조절합니다. (높을수록 다양한 결과)
 일부 추론 특화 모델(DNA-R1 등)은 temperature 조정이 불가능합니다.
+
+[bold]⏱️  Timeout 설정:[/bold]
+예측이 너무 오래 걸릴 경우 자동으로 중단합니다.
+기본값: 60초, 0으로 설정하면 무제한으로 기다립니다.
 
 [bold]💡 모델 변경:[/bold]
 다른 모델을 사용하려면 프로그램 재시작이 필요합니다.
@@ -239,6 +258,8 @@ Temperature는 예측의 무작위성을 조절합니다. (높을수록 다양�
 
         table.add_row("예측 개수 (top_k)", str(self.config.DEFAULT_TOP_K))
         table.add_row("온도 (temperature)", str(self.config.DEFAULT_TEMPERATURE))
+        timeout_str = f"{self.config.DEFAULT_TIMEOUT}초" if self.config.DEFAULT_TIMEOUT else "무제한"
+        table.add_row("타임아웃 (timeout)", timeout_str)
         table.add_row("완전한 어절 생성", "Yes" if self.config.COMPLETE_WORD else "No")
         table.add_row("특수 토큰 포함", "Yes" if self.config.INCLUDE_SPECIAL_TOKENS else "No")
         table.add_row("캐시 활성화", "Yes" if self.config.CACHE_ENABLED else "No")
@@ -340,6 +361,21 @@ Temperature는 예측의 무작위성을 조절합니다. (높을수록 다양�
                 self.console.print(f"[green]Temperature를 {new_value}로 설정했습니다.[/green]")
             else:
                 self.console.print("[red]Temperature는 0.1-2.0 사이여야 합니다.[/red]")
+        except ValueError:
+            self.console.print(f"[red]잘못된 값: {value}[/red]")
+
+    def _set_timeout(self, value: str):
+        """Timeout 설정"""
+        try:
+            new_value = int(value)
+            if new_value > 0:
+                self.config.DEFAULT_TIMEOUT = new_value
+                self.console.print(f"[green]Timeout을 {new_value}초로 설정했습니다.[/green]")
+            elif new_value == 0:
+                self.config.DEFAULT_TIMEOUT = None
+                self.console.print(f"[green]Timeout을 비활성화했습니다 (무제한).[/green]")
+            else:
+                self.console.print("[red]Timeout은 0 이상이어야 합니다 (0=무제한).[/red]")
         except ValueError:
             self.console.print(f"[red]잘못된 값: {value}[/red]")
 

@@ -19,6 +19,7 @@ class Config:
     # 예측 설정
     DEFAULT_TOP_K = 10  # 기본 예측 개수
     DEFAULT_TEMPERATURE = 1.3  # 기본 온도
+    DEFAULT_TIMEOUT = 60  # 기본 타임아웃 (초)
     MAX_INPUT_LENGTH = 128  # 최대 입력 길이
     MAX_WORD_LENGTH = 15  # 어절 최대 길이
     COMPLETE_WORD = True  # 완전한 어절 생성
