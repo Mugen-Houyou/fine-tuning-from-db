@@ -17,14 +17,12 @@ class CacheService:
     def __init__(
         self,
         cache_dir: Optional[str] = None,
-        size_limit: Optional[int] = None,  # 하위 호환성
-        max_size_mb: Optional[int] = None,
+        max_size_mb: int = 100,
         ttl_seconds: int = 300
     ):
         """
         Args:
             cache_dir: 캐시 디렉토리 경로
-            size_limit: 캐시 크기 제한 (바이트, deprecated, 하위 호환성용)
             max_size_mb: 캐시 크기 제한 (MB, 기본값 100MB)
             ttl_seconds: 기본 TTL (초, 기본값 300초)
         """
@@ -35,25 +33,15 @@ class CacheService:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.default_ttl = ttl_seconds
 
-        # size_limit 결정 (하위 호환성 지원)
-        if size_limit is not None:
-            # 기존 방식 (바이트 단위)
-            final_size_limit = size_limit
-        elif max_size_mb is not None:
-            # 새 방식 (MB 단위)
-            final_size_limit = max_size_mb * 1024 * 1024
-        else:
-            # 기본값
-            final_size_limit = 100 * 1024 * 1024
-
         # DiskCache 초기화
+        size_limit = max_size_mb * 1024 * 1024  # MB to bytes
         self.cache = Cache(
             str(self.cache_dir),
-            size_limit=final_size_limit,
+            size_limit=size_limit,
             eviction_policy='least-recently-used'
         )
 
-        logger.info(f"캐시 초기화: {self.cache_dir} (크기 제한: {final_size_limit / 1024 / 1024:.1f}MB, TTL: {ttl_seconds}초)")
+        logger.info(f"캐시 초기화: {self.cache_dir} (크기 제한: {max_size_mb}MB, TTL: {ttl_seconds}초)")
 
     def _generate_key(self, key: str) -> str:
         """캐시 키 해싱"""
