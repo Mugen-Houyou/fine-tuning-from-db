@@ -52,6 +52,7 @@ RATE_LIMIT_BATCH_PER_MINUTE = 10
 
 # 전역 예측기 인스턴스
 predictor: Optional[EOTPredictor] = None
+current_model: str = ""  # 현재 로드된 모델 이름
 
 # Rate limiting storage (실제 환경에서는 Redis 사용 권장)
 rate_limit_storage = {}
@@ -131,7 +132,7 @@ class EOTPredictResponse(BaseModel):
 async def lifespan(app: FastAPI):
     """앱 생명주기 관리"""
     # 시작 시
-    global predictor
+    global predictor, current_model
 
     # 환경 변수에서 설정 읽기
     run_mode = os.getenv("EOT_API_RUN_MODE", DEFAULT_RUN_MODE)
@@ -142,6 +143,7 @@ async def lifespan(app: FastAPI):
     try:
         # EOT 예측기 초기화
         predictor = EOTPredictor(model_name=model_name, run_mode=run_mode)
+        current_model = model_name
         logger.info("EOT 예측기 초기화 완료")
 
         # 워밍업 (첫 예측은 느릴 수 있음)
@@ -365,6 +367,26 @@ async def predict_eot(
             ).dict()
         )
 
+    # 요청된 모델과 현재 로드된 모델이 다른 경우 에러 반환
+    if request.model != current_model:
+        logger.warning(f"모델 불일치: 요청={request.model}, 현재={current_model}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=create_response(
+                success=False,
+                error={
+                    "code": "MODEL_MISMATCH",
+                    "message": f"요청된 모델({request.model})이 서버에 로드된 모델({current_model})과 다릅니다",
+                    "details": {
+                        "requested_model": request.model,
+                        "current_model": current_model,
+                        "suggestion": f"서버를 재시작하거나 model 파라미터를 '{current_model}'로 설정하세요"
+                    }
+                },
+                request_id=request_id
+            ).dict()
+        )
+
     try:
         # 타임아웃 처리
         start_time = time.time()
@@ -428,7 +450,7 @@ async def predict_eot(
                 "eot_probability": round(eot_prob, 4),
                 "predictions": predictions,
                 "input_text": request.text,
-                "model": request.model,
+                "model": current_model,  # 실제 사용된 모델
                 "elapsed_time": round(elapsed_time, 3),
                 "eot_assessment": (
                     "high" if eot_prob > 0.7 else
@@ -497,6 +519,26 @@ async def predict_batch(
             ).dict()
         )
 
+    # 요청된 모델과 현재 로드된 모델이 다른 경우 에러 반환
+    if request.model != current_model:
+        logger.warning(f"모델 불일치 (배치): 요청={request.model}, 현재={current_model}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=create_response(
+                success=False,
+                error={
+                    "code": "MODEL_MISMATCH",
+                    "message": f"요청된 모델({request.model})이 서버에 로드된 모델({current_model})과 다릅니다",
+                    "details": {
+                        "requested_model": request.model,
+                        "current_model": current_model,
+                        "suggestion": f"model 파라미터를 '{current_model}'로 설정하세요"
+                    }
+                },
+                request_id=request_id
+            ).dict()
+        )
+
     try:
         results = []
         total_start = time.time()
@@ -549,7 +591,7 @@ async def predict_batch(
                 "success_count": success_count,
                 "failure_count": failure_count,
                 "total_elapsed_time": round(total_elapsed, 3),
-                "model": request.model
+                "model": current_model  # 실제 사용된 모델
             },
             request_id=request_id
         )
@@ -612,6 +654,26 @@ async def predict_context(
             ).dict()
         )
 
+    # 요청된 모델과 현재 로드된 모델이 다른 경우 에러 반환
+    if request.model != current_model:
+        logger.warning(f"모델 불일치 (컨텍스트): 요청={request.model}, 현재={current_model}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=create_response(
+                success=False,
+                error={
+                    "code": "MODEL_MISMATCH",
+                    "message": f"요청된 모델({request.model})이 서버에 로드된 모델({current_model})과 다릅니다",
+                    "details": {
+                        "requested_model": request.model,
+                        "current_model": current_model,
+                        "suggestion": f"model 파라미터를 '{current_model}'로 설정하세요"
+                    }
+                },
+                request_id=request_id
+            ).dict()
+        )
+
     try:
         # 컨텍스트를 하나의 텍스트로 결합
         combined_text = " ".join(request.context)
@@ -644,7 +706,7 @@ async def predict_context(
                 "predictions": predictions,
                 "context_length": len(request.context),
                 "combined_length": len(combined_text),
-                "model": request.model,
+                "model": current_model,  # 실제 사용된 모델
                 "elapsed_time": round(elapsed_time, 3),
                 "eot_assessment": (
                     "high" if eot_prob > 0.7 else
@@ -716,24 +778,27 @@ async def get_models():
                 "name": "EleutherAI Polyglot-Ko",
                 "description": "한국어 특화 언어 모델",
                 "params": "1.3B",
-                "default": True
+                "default": True,
+                "loaded": current_model == "polyglot"
             },
             {
                 "id": "kogpt2",
                 "name": "SKT KoGPT2",
                 "description": "가볍고 빠른 한국어 GPT",
                 "params": "125M",
-                "default": False
+                "default": False,
+                "loaded": current_model == "kogpt2"
             },
             {
                 "id": "kanana-nano-2.1b-base",
                 "name": "Kanana Nano",
                 "description": "경량 한국어 모델",
                 "params": "2.1B",
-                "default": False
+                "default": False,
+                "loaded": current_model == "kanana-nano-2.1b-base"
             }
         ],
-        "current": "polyglot"
+        "current": current_model
     }
 
 
