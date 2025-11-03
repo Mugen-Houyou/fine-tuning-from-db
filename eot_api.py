@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, validator
 import uvicorn
+import click
 
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
 project_root = Path(__file__).parent.absolute()
@@ -804,10 +805,82 @@ async def get_models():
 
 # ========== 메인 실행 ==========
 
-if __name__ == "__main__":
-    # 환경 변수에서 설정 읽기
-    host = os.getenv("EOT_API_HOST", DEFAULT_HOST)
-    port = int(os.getenv("EOT_API_PORT", DEFAULT_PORT))
+@click.command()
+@click.option(
+    '--model',
+    '-m',
+    default='polyglot',
+    help='사용할 모델 (kogpt2, polyglot, kanana-nano-2.1b-base, kanana-nano-2.1b-instruct)'
+)
+@click.option(
+    '--run-mode',
+    default='auto',
+    type=click.Choice(['auto', 'cpu', 'nvidia-gpu', 'amd-gpu']),
+    help='실행 모드: auto(자동감지), cpu, nvidia-gpu, amd-gpu'
+)
+@click.option(
+    '--host',
+    default=DEFAULT_HOST,
+    help=f'API 서버 호스트 (기본값: {DEFAULT_HOST})'
+)
+@click.option(
+    '--port',
+    '-p',
+    default=DEFAULT_PORT,
+    type=int,
+    help=f'API 서버 포트 (기본값: {DEFAULT_PORT})'
+)
+@click.option(
+    '--list-models',
+    is_flag=True,
+    help='사용 가능한 모델 목록 표시'
+)
+@click.option(
+    '--reload',
+    is_flag=True,
+    default=False,
+    help='개발 모드: 코드 변경 시 자동 재시작'
+)
+def main(model, run_mode, host, port, list_models, reload):
+    """
+    EOT (End-of-Turn) Prediction REST API Server
+
+    한국어 채팅 문맥에서 발화 종료 확률을 예측하는 REST API 서비스
+
+    사용 예시:
+      python eot_api.py --model kogpt2 --port 8000
+      python eot_api.py --model polyglot --run-mode cpu
+      python eot_api.py --list-models
+    """
+    # 모델 목록 표시
+    if list_models:
+        print("\n사용 가능한 모델 목록:\n")
+        print("  1. kogpt2                      - SKT KoGPT2 (125M, 빠름)")
+        print("  2. polyglot                    - EleutherAI Polyglot-Ko (1.3B, 기본값)")
+        print("  3. kanana-nano-2.1b-base       - Kakao Kanana Base (2.1B)")
+        print("  4. kanana-nano-2.1b-instruct   - Kakao Kanana Instruct (2.1B)")
+        print("\n사용 예시:")
+        print("  python eot_api.py --model kogpt2")
+        print("  python eot_api.py --model polyglot --port 8177")
+        print("  python eot_api.py --model kanana-nano-2.1b-base --run-mode nvidia-gpu")
+        return
+
+    # 커맨드라인 인자를 환경 변수로 설정 (lifespan에서 읽을 수 있도록)
+    os.environ["EOT_API_MODEL"] = model
+    os.environ["EOT_API_RUN_MODE"] = run_mode
+    os.environ["EOT_API_HOST"] = host
+    os.environ["EOT_API_PORT"] = str(port)
+
+    print(f"\n{'='*60}")
+    print(f"  EOT Prediction API Server")
+    print(f"  버전: {API_VERSION}")
+    print(f"{'='*60}")
+    print(f"  모델:       {model}")
+    print(f"  실행 모드:  {run_mode}")
+    print(f"  호스트:     {host}")
+    print(f"  포트:       {port}")
+    print(f"  API 문서:   http://{host if host != '0.0.0.0' else 'localhost'}:{port}/docs")
+    print(f"{'='*60}\n")
 
     # Uvicorn 서버 실행
     uvicorn.run(
@@ -816,5 +889,9 @@ if __name__ == "__main__":
         port=port,
         log_level="info",
         access_log=True,
-        reload=False  # 프로덕션에서는 False
+        reload=reload
     )
+
+
+if __name__ == "__main__":
+    main()
